@@ -1,16 +1,30 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import PrivacyPolicy from './components/PrivacyPolicy';
-import TermsAndConditions from './components/TermsAndConditions';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import Terms from './pages/Terms';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+
+// Global Styles (Consolidated)
+import './index.css';
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<Terms />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+      </Routes>
+    </AnimatePresence>
+  );
+}
 
 function App() {
   return (
     <Router>
-      <div className="bg-deep-black min-h-screen text-white relative overflow-x-hidden selection:bg-amber-gold selection:text-black scroll-smooth">
-        <Routes>
-          <Route path="/" element={<TermsAndConditions />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        </Routes>
+      <div className="min-h-screen bg-dialect-bg text-dialect-text antialiased">
+        <AnimatedRoutes />
       </div>
     </Router>
   );
