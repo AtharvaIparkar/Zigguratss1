@@ -222,69 +222,103 @@ const KineticShards = ({ count = 60, scrollProgress = 0, mousePos }) => {
   );
 };
 
-const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition }) => {
+const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isMobile }) => {
   const meshRef = useRef();
   const materialRef = useRef();
   const { gl } = useThree();
-
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const scale = 2.0;
-    canvas.width = 2048 * scale;
-    canvas.height = 1024 * scale;
-
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#010101';
-    ctx.fillRect(0, 0, 2048, 1024);
-
-    ctx.font = 'bold 24px "DM Mono"';
-    ctx.fillStyle = '#ffcc00';
-    ctx.fillText(`${data.chapter}`, 80, 60);
-
-    ctx.font = 'italic 800 86px "Inter Tight"';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(data.title.toUpperCase(), 80, 150);
-
-    ctx.font = '500 26px "Inter"';
-    ctx.fillStyle = '#ffffff';
-    const words = data.text.split(' ');
-    let line = '';
-    let y = 250;
-    const maxWidth = 1888;
-    const lineHeight = 40;
-
-    for (let i = 0; i < words.length; i++) {
-      let testLine = line + words[i] + ' ';
-      let metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && i > 0) {
-        ctx.fillText(line, 80, y);
-        line = words[i] + ' ';
-        y += lineHeight;
-      } else {
-        line = testLine;
-      }
-    }
-    ctx.fillText(line, 80, y);
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.anisotropy = gl.capabilities.getMaxAnisotropy();
-    return tex;
-  }, [data, gl]);
+  const [texture, setTexture] = useState(null);
 
   useEffect(() => {
-    return () => {
-      texture.dispose();
-      if (meshRef.current) {
-        meshRef.current.geometry.dispose();
-        if (meshRef.current.material) meshRef.current.material.dispose();
+    const generateTexture = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const scale = 2.0;
+
+      // Responsive Canvas Settings
+      const baseWidth = isMobile ? 1600 : 2048;
+      const baseFontSize = isMobile ? 42 : 86;
+      const bodyFontSize = isMobile ? 18 : 26;
+      const maxWidth = isMobile ? 850 : baseWidth - 180;
+      const lineHeight = isMobile ? 30 : 42;
+
+      // Real measurement pre-pass
+      ctx.font = `500 ${bodyFontSize}px "Inter"`;
+      const words = data.text.split(' ');
+      let lineCount = 1;
+      let testLineMsg = '';
+      for (let n = 0; n < words.length; n++) {
+        let testText = testLineMsg + words[n] + ' ';
+        let metrics = ctx.measureText(testText);
+        if (metrics.width > maxWidth && n > 0) {
+          testLineMsg = words[n] + ' ';
+          lineCount++;
+        } else {
+          testLineMsg = testText;
+        }
       }
+
+      // Height Safety: Use a buffer to prevent clipping
+      const headerSpace = 250;
+      const bodySpace = lineCount * lineHeight;
+      const calculatedHeight = Math.max(1024, headerSpace + bodySpace + 140);
+      
+      canvas.width = baseWidth * scale;
+      canvas.height = calculatedHeight * scale;
+
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#010101';
+      ctx.fillRect(0, 0, baseWidth, calculatedHeight);
+
+      const paddingX = isMobile ? (baseWidth - maxWidth) / 2 : 80;
+      // Label
+      ctx.font = 'bold 24px "DM Mono"';
+      ctx.fillStyle = '#ffcc00';
+      ctx.fillText(`${data.chapter}`, paddingX, 60);
+
+      // Title
+      ctx.font = `italic 800 ${baseFontSize}px "Inter Tight"`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(data.title.toUpperCase(), paddingX, 150);
+
+      // Body Text
+      ctx.font = `500 ${bodyFontSize}px "Inter"`;
+      ctx.fillStyle = '#ffffff';
+      let line = '';
+      let y = 250;
+
+      for (let i = 0; i < words.length; i++) {
+        let testLine = line + words[i] + ' ';
+        let metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0) {
+          ctx.fillText(line, paddingX, y);
+          line = words[i] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, paddingX, y);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.anisotropy = gl.capabilities.getMaxAnisotropy();
+      tex.needsUpdate = true;
+      setTexture(tex);
     };
-  }, [texture]);
+
+    // Generate once immediately
+    generateTexture();
+
+    // Re-generate once fonts are definitely ready to fix missing paragraphs
+    document.fonts.ready.then(generateTexture);
+
+    return () => {
+      if (texture) texture.dispose();
+    };
+  }, [data, gl, isMobile]);
 
   useFrame((state) => {
     if (!meshRef.current) return;
-    const verticalSpacing = 24;
+    const verticalSpacing = isMobile ? 45 : 24;
     const totalHeight = totalCount * verticalSpacing;
     const scrollOffset = scrollProgress * (totalHeight + verticalSpacing);
     const targetY = -index * verticalSpacing + scrollOffset;
@@ -297,13 +331,16 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition }) =
       materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       materialRef.current.uniforms.uMouse.value.lerp(mousePosition, 0.1);
       const distFromCenter = Math.abs(targetY);
-      materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.clamp(2.5 - (distFromCenter / 17.0), 0.0, 1.0);
+      const opacityClamp = isMobile ? 20.0 : 17.0;
+      materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.clamp(2.5 - (distFromCenter / opacityClamp), 0.0, 1.0);
     }
   });
 
+  if (!texture) return null;
+
   return (
     <mesh ref={meshRef}>
-      <planeGeometry args={[28, 14, 32, 24]} />
+      <planeGeometry args={[isMobile ? 14 : 28, isMobile ? 22 : 14, 32, 24]} />
       <shaderMaterial
         ref={materialRef}
         transparent={true}
@@ -319,7 +356,7 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition }) =
   );
 };
 
-const HelixStage = ({ data }) => {
+const HelixStage = ({ data, isMobile, fontsReady }) => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [mousePos] = useState(() => new THREE.Vector2(0, 0));
   const lightRef = useRef();
@@ -334,11 +371,11 @@ const HelixStage = ({ data }) => {
 
     mousePos.lerp(state.mouse, 0.1);
     const time = state.clock.getElapsedTime();
-    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, state.mouse.x * 2.0, 0.05);
-    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, state.mouse.y * 2.0, 0.05);
+    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, isMobile ? 0 : state.mouse.x * 2.0, 0.05);
+    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, isMobile ? 0 : state.mouse.y * 2.0, 0.05);
     state.camera.position.z = 35 + Math.sin(time * 0.4) * 0.5;
-    state.camera.rotation.y = THREE.MathUtils.lerp(state.camera.rotation.y, -state.mouse.x * 0.08, 0.05);
-    state.camera.rotation.x = THREE.MathUtils.lerp(state.camera.rotation.x, state.mouse.y * 0.08, 0.05);
+    state.camera.rotation.y = THREE.MathUtils.lerp(state.camera.rotation.y, isMobile ? 0 : -state.mouse.x * 0.08, 0.05);
+    state.camera.rotation.x = THREE.MathUtils.lerp(state.camera.rotation.x, isMobile ? 0 : state.mouse.y * 0.08, 0.05);
 
     if (lightRef.current) {
       lightRef.current.position.x = Math.sin(progress * Math.PI + time * 0.2) * 25;
@@ -356,7 +393,16 @@ const HelixStage = ({ data }) => {
       <Float speed={2} rotationIntensity={0.15} floatIntensity={0.15}>
         <group position={[0, 1, 0]}>
           {data.map((item, index) => (
-            <HelixTile key={index} data={item} index={index} totalCount={data.length} scrollProgress={scrollProgress} mousePosition={mousePos} />
+            <HelixTile 
+              key={index} 
+              data={item} 
+              index={index} 
+              totalCount={data.length} 
+              scrollProgress={scrollProgress} 
+              mousePosition={mousePos} 
+              isMobile={isMobile}
+              fontsReady={fontsReady}
+            />
           ))}
         </group>
       </Float>
@@ -380,19 +426,19 @@ const NavLink = ({ to, label, active }) => (
   </Link>
 );
 
-const MinimalNav = () => {
+const MinimalNav = ({ isMobile }) => {
   const location = useLocation();
   return (
-    <nav className="fixed top-0 left-0 w-full p-8 lg:p-12 z-[100] flex justify-between items-start pointer-events-none">
+    <nav className="fixed top-0 left-0 w-full p-6 md:p-12 z-[100] flex justify-between items-start pointer-events-none">
       <Link to="/" className="pointer-events-auto h-12 flex items-center gap-2 group">
-        <div className="w-8 h-8 bg-dialect-accent rounded-sm flex items-center justify-center text-dialect-bg font-extrabold text-xl">Z</div>
+        <div className="w-6 h-6 md:w-8 md:h-8 bg-dialect-accent rounded-sm flex items-center justify-center text-dialect-bg font-extrabold text-sm md:text-xl">Z</div>
         <div className="overflow-hidden">
-          <motion.span initial={{ y: '100%' }} animate={{ y: '0%' }} className="block text-dialect-text font-black tracking-tighter text-lg leading-none group-hover:text-dialect-accent transition-colors duration-300">
+          <motion.span initial={{ y: '100%' }} animate={{ y: '0%' }} className="block text-dialect-text font-black tracking-tighter text-sm md:text-lg leading-none group-hover:text-dialect-accent transition-colors duration-300">
             ZIGGURATSS
           </motion.span>
         </div>
       </Link>
-      <div className="flex flex-col items-end gap-2 pointer-events-auto">
+      <div className="flex flex-col items-end gap-1 md:gap-2 pointer-events-auto">
         <NavLink to="/" label="Terms" active={location.pathname === '/'} />
         <NavLink to="/privacy" label="Privacy" active={location.pathname === '/privacy'} />
       </div>
@@ -408,40 +454,55 @@ const MinimalNav = () => {
 
 const Terms = () => {
   const [isAgreed, setIsAgreed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleAgree = () => {
     setIsAgreed(true);
   };
+
   return (
     <main className="relative w-full min-h-[800vh] bg-dialect-bg cursor-crosshair">
-      <MinimalNav />
+      <MinimalNav isMobile={isMobile} />
       <div className="fixed inset-0 w-full h-screen bg-dialect-bg z-[1] pointer-events-none">
-        <Canvas shadows className="pointer-events-auto" camera={{ position: [0, 0, 35], fov: 35 }} gl={{ antialias: true, stencil: false, depth: true }} onCreated={(s) => s.scene.fog = new THREE.FogExp2('#020202', 0.015)}>
+        <Canvas 
+          shadows 
+          className="pointer-events-auto" 
+          camera={{ position: [0, 0, isMobile ? 48 : 35], fov: isMobile ? 40 : 35 }} 
+          gl={{ antialias: true, stencil: false, depth: true }} 
+          onCreated={(s) => s.scene.fog = new THREE.FogExp2('#020202', isMobile ? 0.02 : 0.015)}
+        >
           <Suspense fallback={null}>
-            <HelixStage data={termsContent} />
+            <HelixStage data={termsContent} isMobile={isMobile} />
           </Suspense>
         </Canvas>
-        <div className="absolute bottom-12 left-12 flex flex-col gap-2 pointer-events-none">
-          <div className="meta-label">Copyright © 2026 Zigguratss Artwork LLP. All Rights Reserved.</div>
+        <div className="absolute bottom-12 left-12 max-md:hidden flex flex-col gap-2 pointer-events-none">
+          <div className="meta-label text-[0.65rem]">Copyright © 2026 Zigguratss Artwork LLP. All Rights Reserved.</div>
         </div>
       </div>
       <div className="relative z-10 pointer-events-none">
         <div className="h-screen flex items-center justify-center">
-          <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 mix-blend-difference">
-            <h1 className="gallery-heading text-[0.6rem] tracking-[0.8em]">GENERAL TERMS AND CONDITIONS FOR ARTIST'S AND BUYER'S</h1>
+          <div className="fixed top-24 md:top-12 left-1/2 -translate-x-1/2 z-50 mix-blend-difference text-center w-full px-12">
+            <h1 className="gallery-heading text-[0.38rem] md:text-[0.6rem] tracking-[0.1em] md:tracking-[0.8em] uppercase">GENERAL TERMS AND CONDITIONS FOR ARTIST'S AND BUYER'S</h1>
           </div>
         </div>
       </div>
-      <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-8 pointer-events-auto">
+      <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-8 pointer-events-auto w-full px-6">
         <div className="flex flex-col items-center gap-2">
           <div className="w-px h-8 bg-dialect-accent/30" />
-          <p className="text-[0.55rem] text-dialect-text/30 tracking-[0.3em] font-medium uppercase">End of Covenant Agreement</p>
+          <p className="text-[0.5rem] md:text-[0.55rem] text-dialect-text/30 tracking-[0.3em] font-medium uppercase text-center">End of Covenant Agreement</p>
         </div>
 
         <button
           onClick={handleAgree}
           disabled={isAgreed}
-          className={`group relative px-12 py-4 min-w-[280px] h-[64px] bg-transparent border transition-all duration-700 overflow-hidden flex items-center justify-center ${isAgreed ? 'border-dialect-accent/50 cursor-default' : 'border-dialect-accent/30 hover:border-dialect-accent'}`}
+          className={`group relative px-12 py-4 w-full max-w-[280px] h-[58px] md:h-[64px] bg-transparent border transition-all duration-700 overflow-hidden flex items-center justify-center ${isAgreed ? 'border-dialect-accent/50 cursor-default' : 'border-dialect-accent/30 hover:border-dialect-accent'}`}
         >
           <div className="absolute inset-0 bg-dialect-accent/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
 
@@ -452,7 +513,7 @@ const Terms = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="relative z-10 text-[0.7rem] font-bold tracking-[0.4em] text-dialect-accent uppercase"
+                className="relative z-10 text-[0.55rem] md:text-[0.7rem] font-bold tracking-[0.3em] md:tracking-[0.4em] text-dialect-accent uppercase"
               >
                 Agree and Continue
               </motion.span>
@@ -463,7 +524,7 @@ const Terms = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="relative z-10 flex items-center gap-4"
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <motion.path
                     d="M5 12L10 17L19 8"
                     stroke="#ffcc00"
@@ -475,13 +536,13 @@ const Terms = () => {
                     transition={{ duration: 0.6, ease: "easeOut" }}
                   />
                 </svg>
-                <span className="text-[0.65rem] tracking-[0.5em] text-dialect-accent uppercase font-black">Signed</span>
+                <span className="text-[0.55rem] md:text-[0.65rem] tracking-[0.4em] md:tracking-[0.5em] text-dialect-accent uppercase font-black">Archive Signed</span>
               </motion.div>
             )}
           </AnimatePresence>
         </button>
       </div>
-      <div className="fixed inset-0 pointer-events-none border-[30px] border-dialect-bg/80 z-40" />
+      <div className="fixed inset-0 pointer-events-none border-[12px] md:border-[30px] border-dialect-bg/80 z-40" />
     </main>
   );
 };
