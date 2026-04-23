@@ -205,12 +205,13 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       const ctx = canvas.getContext('2d');
       const scale = 2.0;
 
-      // Responsive Canvas Settings
+      // Professional Responsive Calibration
       const baseWidth = isMobile ? 1600 : 2048;
-      const baseFontSize = isMobile ? 42 : 86;
-      const bodyFontSize = isMobile ? 18 : 26;
-      const maxWidth = isMobile ? 850 : baseWidth - 180;
-      const lineHeight = isMobile ? 30 : 42;
+      const baseFontSize = isMobile ? 54 : 86;
+      const bodyFontSize = isMobile ? 20 : 26;
+      const maxWidth = isMobile ? 900 : 1800;
+      const lineHeight = isMobile ? 32 : 40;
+      const headerSpace = isMobile ? 250 : 250;
 
       // Real measurement pre-pass
       ctx.font = `500 ${bodyFontSize}px "Inter"`;
@@ -229,7 +230,6 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       }
 
       // Height Safety
-      const headerSpace = 250;
       const bodySpace = lineCount * lineHeight;
       const calculatedHeight = Math.max(1024, headerSpace + bodySpace + 140);
 
@@ -249,13 +249,14 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       // Title
       ctx.font = `italic 800 ${baseFontSize}px "Inter Tight"`;
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(data.title.toUpperCase(), paddingX, 150);
+      const titleY = isMobile ? 130 : 150;
+      ctx.fillText(data.title.toUpperCase(), paddingX, titleY);
 
       // Body Text
       ctx.font = `500 ${bodyFontSize}px "Inter"`;
       ctx.fillStyle = '#ffffff';
       let line = '';
-      let y = 250;
+      let y = headerSpace;
 
       for (let i = 0; i < words.length; i++) {
         let testLine = line + words[i] + ' ';
@@ -279,7 +280,11 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
     generateTexture();
     document.fonts.ready.then(generateTexture);
 
+    // Safety fallback for route switches
+    const timer = setTimeout(generateTexture, 100);
+
     return () => {
+      clearTimeout(timer);
       if (texture) texture.dispose();
     };
   }, [data, gl, isMobile]);
@@ -297,8 +302,7 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
   useFrame((state) => {
     if (!meshRef.current) return;
     const verticalSpacing = isMobile ? 45 : 24;
-    const totalHeight = totalCount * verticalSpacing;
-    const scrollOffset = scrollProgress * (totalHeight + verticalSpacing);
+    const scrollOffset = scrollProgress * (totalCount - 1) * verticalSpacing;
     const targetY = -index * verticalSpacing + scrollOffset;
     const zDepth = targetY > 5.0 ? -(targetY - 5.0) * 10.0 : 0;
 
@@ -309,16 +313,19 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       materialRef.current.uniforms.uMouse.value.lerp(mousePosition, 0.1);
       const distFromCenter = Math.abs(targetY);
-      const opacityClamp = isMobile ? 20.0 : 17.0;
+      const opacityClamp = isMobile ? 15.0 : 17.0;
       materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.clamp(2.5 - (distFromCenter / opacityClamp), 0.0, 1.0);
     }
   });
 
   if (!texture) return null;
 
+  const planeWidth = isMobile ? 16 : 28;
+  const planeHeight = isMobile ? 22 : 14;
+
   return (
     <mesh ref={meshRef}>
-      <planeGeometry args={[isMobile ? 14 : 28, isMobile ? 22 : 14, 32, 24]} />
+      <planeGeometry args={[planeWidth, planeHeight, 32, 24]} />
       <shaderMaterial
         ref={materialRef}
         transparent={true}
@@ -369,7 +376,7 @@ const HelixStage = ({ data, isMobile, fontsReady }) => {
       <spotLight ref={lightRef} position={[0, 40, 10]} angle={0.6} penumbra={1} intensity={8} color="#ffcc00" castShadow />
       <KineticShards count={60} scrollProgress={scrollProgress} mousePos={mousePos} />
       <Float speed={2} rotationIntensity={0.15} floatIntensity={0.15}>
-        <group position={[0, 1, 0]}>
+        <group position={[0, isMobile ? -3 : 1, 0]}>
           {data.map((item, index) => (
             <HelixTile
               key={index}
@@ -451,7 +458,7 @@ const PrivacyPolicy = () => {
         <Canvas
           shadows
           className="pointer-events-auto"
-          camera={{ position: [0, 0, isMobile ? 48 : 35], fov: isMobile ? 40 : 35 }}
+          camera={{ position: [0, 0, isMobile ? 42 : 35], fov: isMobile ? 42 : 35 }}
           gl={{ antialias: true, stencil: false, depth: true }}
           onCreated={(s) => s.scene.fog = new THREE.FogExp2('#020202', isMobile ? 0.02 : 0.015)}
         >
@@ -465,8 +472,8 @@ const PrivacyPolicy = () => {
       </div>
       <div className="relative z-10 pointer-events-none">
         <div className="h-screen flex items-center justify-center">
-          <div className="fixed top-24 md:top-12 left-1/2 -translate-x-1/2 z-50 mix-blend-difference text-center w-full px-12">
-            <h1 className="gallery-heading text-[0.38rem] md:text-[0.6rem] tracking-[0.1em] md:tracking-[0.8em] whitespace-nowrap uppercase">PRIVACY POLICY</h1>
+          <div className="fixed top-24 md:top-12 left-1/2 -translate-x-1/2 z-50 mix-blend-difference text-center w-full px-6">
+            <h1 className="gallery-heading text-[0.45rem] md:text-[0.6rem] tracking-[0.2em] md:tracking-[0.8em] uppercase">PRIVACY POLICY</h1>
           </div>
         </div>
       </div>
