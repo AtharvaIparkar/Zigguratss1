@@ -237,9 +237,9 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       // Professional Responsive Calibration
       const baseWidth = isMobile ? 1600 : 2048;
       const baseFontSize = isMobile ? 54 : 86;
-      const bodyFontSize = isMobile ? 32 : 26;
+      const bodyFontSize = isMobile ? 36 : 26;
       const maxWidth = isMobile ? 1000 : 1800;
-      const lineHeight = isMobile ? 46 : 40;
+      const lineHeight = isMobile ? 52 : 40;
       const headerSpace = isMobile ? 250 : 250;
 
       // Real measurement pre-pass
@@ -283,6 +283,8 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
 
       // Body Text
       ctx.font = `500 ${bodyFontSize}px "Inter"`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
       ctx.fillStyle = '#ffffff';
       let line = '';
       let y = headerSpace;
@@ -291,6 +293,8 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
         let testLine = line + words[i] + ' ';
         let metrics = ctx.measureText(testLine);
         if (metrics.width > maxWidth && i > 0) {
+          ctx.font = `500 ${bodyFontSize}px "Inter"`;
+          ctx.fillStyle = '#ffffff';
           ctx.fillText(line, paddingX, y);
           line = words[i] + ' ';
           y += lineHeight;
@@ -298,6 +302,8 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
           line = testLine;
         }
       }
+      ctx.font = `500 ${bodyFontSize}px "Inter"`;
+      ctx.fillStyle = '#ffffff';
       ctx.fillText(line, paddingX, y);
 
       const tex = new THREE.CanvasTexture(canvas);
@@ -308,7 +314,7 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
 
     generateTexture();
     document.fonts.ready.then(generateTexture);
-    
+
     // Safety fallback for route switches
     const timer = setTimeout(generateTexture, 100);
 
@@ -342,7 +348,7 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       materialRef.current.uniforms.uMouse.value.lerp(mousePosition, 0.1);
       const distFromCenter = Math.abs(targetY);
-      const opacityClamp = isMobile ? 15.0 : 17.0;
+      const opacityClamp = isMobile ? 25.0 : 17.0;
       materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.clamp(2.5 - (distFromCenter / opacityClamp), 0.0, 1.0);
     }
   });
@@ -407,13 +413,13 @@ const HelixStage = ({ data, isMobile, fontsReady }) => {
       <Float speed={2} rotationIntensity={0.15} floatIntensity={0.15}>
         <group position={[0, isMobile ? -3 : 1, 0]}>
           {data.map((item, index) => (
-            <HelixTile 
-              key={index} 
-              data={item} 
-              index={index} 
-              totalCount={data.length} 
-              scrollProgress={scrollProgress} 
-              mousePosition={mousePos} 
+            <HelixTile
+              key={index}
+              data={item}
+              index={index}
+              totalCount={data.length}
+              scrollProgress={scrollProgress}
+              mousePosition={mousePos}
               isMobile={isMobile}
               fontsReady={fontsReady}
             />
@@ -485,11 +491,11 @@ const Terms = () => {
     <main className="relative w-full min-h-[800vh] bg-dialect-bg cursor-crosshair">
       <MinimalNav isMobile={isMobile} />
       <div className="fixed inset-0 w-full h-screen bg-dialect-bg z-[1] pointer-events-none">
-        <Canvas 
-          shadows 
-          className="pointer-events-auto" 
-          camera={{ position: [0, 0, isMobile ? 42 : 35], fov: isMobile ? 42 : 35 }} 
-          gl={{ antialias: true, stencil: false, depth: true }} 
+        <Canvas
+          shadows
+          className="pointer-events-auto"
+          camera={{ position: [0, 0, isMobile ? 42 : 35], fov: isMobile ? 42 : 35 }}
+          gl={{ antialias: true, stencil: false, depth: true }}
           onCreated={(s) => s.scene.fog = new THREE.FogExp2('#020202', isMobile ? 0.02 : 0.015)}
         >
           <Suspense fallback={null}>

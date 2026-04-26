@@ -208,9 +208,9 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       // Professional Responsive Calibration
       const baseWidth = isMobile ? 1600 : 2048;
       const baseFontSize = isMobile ? 54 : 86;
-      const bodyFontSize = isMobile ? 32 : 26;
+      const bodyFontSize = isMobile ? 36 : 26;
       const maxWidth = isMobile ? 1000 : 1800;
-      const lineHeight = isMobile ? 46 : 40;
+      const lineHeight = isMobile ? 52 : 40;
       const headerSpace = isMobile ? 250 : 250;
 
       // Real measurement pre-pass
@@ -254,6 +254,8 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
 
       // Body Text
       ctx.font = `500 ${bodyFontSize}px "Inter"`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
       ctx.fillStyle = '#ffffff';
       let line = '';
       let y = headerSpace;
@@ -262,6 +264,8 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
         let testLine = line + words[i] + ' ';
         let metrics = ctx.measureText(testLine);
         if (metrics.width > maxWidth && i > 0) {
+          ctx.font = `500 ${bodyFontSize}px "Inter"`;
+          ctx.fillStyle = '#ffffff';
           ctx.fillText(line, paddingX, y);
           line = words[i] + ' ';
           y += lineHeight;
@@ -269,6 +273,8 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
           line = testLine;
         }
       }
+      ctx.font = `500 ${bodyFontSize}px "Inter"`;
+      ctx.fillStyle = '#ffffff';
       ctx.fillText(line, paddingX, y);
 
       const tex = new THREE.CanvasTexture(canvas);
@@ -313,7 +319,7 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       materialRef.current.uniforms.uMouse.value.lerp(mousePosition, 0.1);
       const distFromCenter = Math.abs(targetY);
-      const opacityClamp = isMobile ? 15.0 : 17.0;
+      const opacityClamp = isMobile ? 25.0 : 17.0;
       materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.clamp(2.5 - (distFromCenter / opacityClamp), 0.0, 1.0);
     }
   });
