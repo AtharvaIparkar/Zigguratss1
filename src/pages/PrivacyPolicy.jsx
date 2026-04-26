@@ -208,9 +208,9 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       // Professional Responsive Calibration
       const baseWidth = isMobile ? 1600 : 2048;
       const baseFontSize = isMobile ? 54 : 86;
-      const bodyFontSize = isMobile ? 20 : 26;
-      const maxWidth = isMobile ? 900 : 1800;
-      const lineHeight = isMobile ? 32 : 40;
+      const bodyFontSize = isMobile ? 32 : 26;
+      const maxWidth = isMobile ? 1000 : 1800;
+      const lineHeight = isMobile ? 46 : 40;
       const headerSpace = isMobile ? 250 : 250;
 
       // Real measurement pre-pass
