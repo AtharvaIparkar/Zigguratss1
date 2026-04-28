@@ -227,6 +227,7 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
   const materialRef = useRef();
   const { gl } = useThree();
   const [texture, setTexture] = useState(null);
+  const [tileHeight, setTileHeight] = useState(isMobile ? 22 : 14);
 
   useEffect(() => {
     const generateTexture = () => {
@@ -237,9 +238,9 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       // Professional Responsive Calibration
       const baseWidth = isMobile ? 1600 : 2048;
       const baseFontSize = isMobile ? 54 : 86;
-      const bodyFontSize = isMobile ? 36 : 26;
+      const bodyFontSize = isMobile ? 44 : 26;
       const maxWidth = isMobile ? 1000 : 1800;
-      const lineHeight = isMobile ? 52 : 40;
+      const lineHeight = isMobile ? 62 : 40;
       const headerSpace = isMobile ? 250 : 250;
 
       // Real measurement pre-pass
@@ -310,6 +311,9 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       tex.anisotropy = gl.capabilities.getMaxAnisotropy();
       tex.needsUpdate = true;
       setTexture(tex);
+
+      const planeWidth = isMobile ? 15 : 28;
+      setTileHeight((calculatedHeight / baseWidth) * planeWidth);
     };
 
     generateTexture();
@@ -336,10 +340,16 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
 
   useFrame((state) => {
     if (!meshRef.current) return;
-    const verticalSpacing = isMobile ? 45 : 24;
+    const verticalSpacing = isMobile ? 80 : 24;
     const scrollOffset = scrollProgress * (totalCount - 1) * verticalSpacing;
-    const targetY = -index * verticalSpacing + scrollOffset;
-    const zDepth = targetY > 5.0 ? -(targetY - 5.0) * 10.0 : 0;
+    let targetY = -index * verticalSpacing + scrollOffset;
+
+    // Make last para go more up on mobile
+    if (isMobile && index === totalCount - 1) {
+      targetY += 10;
+    }
+
+    const zDepth = targetY > 5.0 ? -(targetY - 5.0) * (isMobile ? 5.0 : 10.0) : 0;
 
     meshRef.current.position.set(0, targetY, zDepth);
     meshRef.current.lookAt(0, targetY, 35);
@@ -348,15 +358,15 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
       materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       materialRef.current.uniforms.uMouse.value.lerp(mousePosition, 0.1);
       const distFromCenter = Math.abs(targetY);
-      const opacityClamp = isMobile ? 25.0 : 17.0;
+      const opacityClamp = isMobile ? 40.0 : 17.0;
       materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.clamp(2.5 - (distFromCenter / opacityClamp), 0.0, 1.0);
     }
   });
 
   if (!texture) return null;
 
-  const planeWidth = isMobile ? 16 : 28;
-  const planeHeight = isMobile ? 22 : 14;
+  const planeWidth = isMobile ? 15 : 28;
+  const planeHeight = tileHeight;
 
   return (
     <mesh ref={meshRef}>
@@ -509,7 +519,7 @@ const Terms = () => {
       <div className="relative z-10 pointer-events-none">
         <div className="h-screen flex items-center justify-center">
           <div className="fixed top-24 md:top-12 left-1/2 -translate-x-1/2 z-50 mix-blend-difference text-center w-full px-6">
-            <h1 className="gallery-heading text-[0.45rem] md:text-[0.6rem] tracking-[0.2em] md:tracking-[0.8em] uppercase">GENERAL TERMS AND CONDITIONS FOR ARTIST'S AND BUYER'S</h1>
+            <h1 className="gallery-heading text-[0.6rem] md:text-[0.6rem] tracking-[0.2em] md:tracking-[0.8em] uppercase">GENERAL TERMS AND CONDITIONS FOR ARTIST'S AND BUYER'S</h1>
           </div>
         </div>
       </div>
