@@ -319,6 +319,11 @@ const HelixTile = ({ data, index, totalCount, scrollProgress, mousePosition, isM
     if (isMobile && index === totalCount - 1) {
       targetY += 10;
     }
+    
+    // Clear top header overlap on mobile
+    if (isMobile && index === 0) {
+      targetY -= 10;
+    }
 
     const zDepth = targetY > 5.0 ? -(targetY - 5.0) * (isMobile ? 5.0 : 10.0) : 0;
 
